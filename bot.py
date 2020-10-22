@@ -1,11 +1,13 @@
+from typing import List
 from aiogram import Bot, types
 from aiogram import Dispatcher
 from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from config import TOKEN, QuizDialogStates
-from questions import questions, Question, Answer
+from questions import db, Question
 
+questions: List[Question] = db.get_questions()
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
