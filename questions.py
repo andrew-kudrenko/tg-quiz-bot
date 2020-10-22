@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import psycopg2
 
@@ -21,6 +21,12 @@ class Question:
             if answer.is_right:
                 self.correct_answer_id: int = i
                 break
+
+
+class UserResult:
+    def __init__(self, user_id: Union[str, int], right_answers: int):
+        self.user_id: Union[str, int] = user_id
+        self.right_answers: int = right_answers
 
 
 class DB:
@@ -54,6 +60,9 @@ class DB:
             questions.append(Question(answers=answers, title=record[1], explaining=record[3]))
 
         return questions
+
+    def save_user_result(self, r: UserResult):
+        self.cursor.execute(f'INSERT INTO results(user_id, right_answers) VALUES ({r.user_id}, {r.right_answers});')
 
 
 db = DB()

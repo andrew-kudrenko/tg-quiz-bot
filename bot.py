@@ -5,7 +5,7 @@ from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from config import TOKEN, QuizDialogStates
-from questions import db, Question
+from questions import db, Question, UserResult
 
 questions: List[Question] = db.get_questions()
 bot = Bot(token=TOKEN)
@@ -25,12 +25,12 @@ async def handle_start_cmd(msg: types.Message):
     greeting: str = 'Привет👋\n' \
                     'Ну что, готов побороться за звание “Всезнайки” среди первокурсников?🏆\n' \
                     'Тогда предлгаем тебе пройти занимательную викторину, ' \
-                    'где ты сможешь узнать много нового и показать своё знание ВУЗа'
+                    'где ты сможешь узнать много нового и показать своё знание ВУЗа📚💯'
 
-    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Да'))
+    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Да!👍'))
 
     await msg.reply(greeting, reply=False)
-    await msg.reply('Начнём?', reply_markup=accept_request, reply=False)
+    await msg.reply('Начнём?⏰', reply_markup=accept_request, reply=False)
 
 
 @dp.message_handler(state=QuizDialogStates.getting_ready)
@@ -41,16 +41,16 @@ async def handle_getting_ready(msg: types.Message):
     await QuizDialogStates.awaiting_question.set()
     accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Начать'))
 
-    await msg.reply('Отлично! Тогда начнём', reply_markup=accept_request, reply=False)
+    await msg.reply('Отлично!🙃', reply_markup=accept_request, reply=False)
 
 
 @dp.message_handler(state=QuizDialogStates.awaiting_question)
 async def handle_awaiting_question(msg: types.Message):
-    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Узнать результат!'))
+    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Узнать результат!📊'))
 
     if current_question >= len(questions):
         await QuizDialogStates.awaiting_total.set()
-        await msg.reply('Благодарим за участие в опросе', reply_markup=accept_request, reply=False)
+        await msg.reply('Благодарим за участие в опросе😊', reply_markup=accept_request, reply=False)
         return
     else:
         q = questions[current_question]
@@ -74,11 +74,11 @@ async def handle_poll_answer(poll: types.Poll):
             right_answers += 1
             break
 
-    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Следующий вопрос'))
+    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Следующий вопрос🆗'))
 
     await bot.send_message(
         chat_id=chat_id,
-        text=f'Ответ: {questions[current_question].explaining}',
+        text=f'🗝Ответ: {questions[current_question].explaining}',
         reply_markup=accept_request
     )
 
@@ -90,11 +90,12 @@ async def handle_poll_answer(poll: types.Poll):
 async def handle_awaiting_total(msg: types.Message):
     global right_answers
 
-    await msg.reply(f'Количество верных ответов: {right_answers} из {len(questions)} вопросов', reply=False)
+    await msg.reply(f'🏁Количество верных ответов: {right_answers} из {len(questions)} вопросов', reply=False)
+    db.save_user_result(UserResult(right_answers=right_answers, user_id=msg.from_user.id))
 
 
 @dp.message_handler(state=QuizDialogStates.end)
 async def handle_end_of_quiz(msg: types.Message):
-    await msg.reply('Вы уже прошли этот опрос', reply=False)
+    await msg.reply('Вы уже прошли этот опрос👌', reply=False)
 
 executor.start_polling(dp)
