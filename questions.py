@@ -62,7 +62,15 @@ class DB:
         return questions
 
     def save_user_result(self, r: UserResult):
-        self.cursor.execute(f'INSERT INTO results(user_id, right_answers) VALUES ({r.user_id}, {r.right_answers});')
+        self.cursor.executemany(
+            'INSERT INTO results(user_id, right_answers) VALUES (%s, %s)',
+            [(r.user_id, r.right_answers)]
+        )
+        self.conn.commit()
+
+    def get_user_result(self, user_id: Union[str, int]):
+        self.cursor.execute('SELECT right_answers FROM results WHERE user_id = %s', [str(user_id)])
+        return self.cursor.fetchone()[0]
 
 
 db = DB()

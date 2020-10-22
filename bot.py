@@ -16,21 +16,23 @@ right_answers: int = 0
 chat_id: int = 0
 
 
-@dp.message_handler(commands=['start'], state=None)
+@dp.message_handler(commands=['start'])
 async def handle_start_cmd(msg: types.Message):
     global chat_id
+
+    await QuizDialogStates.start.set()
+
     chat_id = msg.chat.id
-    await QuizDialogStates.getting_ready.set()
-
-    greeting: str = 'Привет👋\n' \
-                    'Ну что, готов побороться за звание “Всезнайки” среди первокурсников?🏆\n' \
+    greeting: str = 'Привет 👋\n' \
+                    'Ну что, готов побороться за звание “Всезнайки” среди первокурсников? 🏆\n' \
                     'Тогда предлгаем тебе пройти занимательную викторину, ' \
-                    'где ты сможешь узнать много нового и показать своё знание ВУЗа📚💯'
+                    'где ты сможешь узнать много нового и показать своё знание ВУЗа 📚 💯'
 
-    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Да!👍'))
+    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Да! 👍'))
 
     await msg.reply(greeting, reply=False)
-    await msg.reply('Начнём?⏰', reply_markup=accept_request, reply=False)
+    await msg.reply('Начнём? ⏰', reply_markup=accept_request, reply=False)
+    await QuizDialogStates.getting_ready.set()
 
 
 @dp.message_handler(state=QuizDialogStates.getting_ready)
@@ -41,17 +43,16 @@ async def handle_getting_ready(msg: types.Message):
     await QuizDialogStates.awaiting_question.set()
     accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Начать'))
 
-    await msg.reply('Отлично!🙃', reply_markup=accept_request, reply=False)
+    await msg.reply('Отлично! 🙃', reply_markup=accept_request, reply=False)
 
 
 @dp.message_handler(state=QuizDialogStates.awaiting_question)
 async def handle_awaiting_question(msg: types.Message):
-    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Узнать результат!📊'))
-
-    if current_question >= len(questions):
+    if current_question > len(questions) - 1:
+        accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(
+            types.KeyboardButton('Узнать результат! 📊'))
         await QuizDialogStates.awaiting_total.set()
-        await msg.reply('Благодарим за участие в опросе😊', reply_markup=accept_request, reply=False)
-        return
+        await msg.reply('Благодарим за участие в опросе 😊', reply_markup=accept_request, reply=False)
     else:
         q = questions[current_question]
         await bot.send_poll(
@@ -74,11 +75,18 @@ async def handle_poll_answer(poll: types.Poll):
             right_answers += 1
             break
 
-    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Следующий вопрос🆗'))
+    text: str = f'🗝 Ответ: {questions[current_question].explaining}'
+
+    accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(
+        types.KeyboardButton('Следующий вопрос 🆗'))
+
+    if current_question == len(questions) - 1:
+        accept_request = types.ReplyKeyboardMarkup(resize_keyboard=True).add(
+            types.KeyboardButton('Завершить'))
 
     await bot.send_message(
         chat_id=chat_id,
-        text=f'🗝Ответ: {questions[current_question].explaining}',
+        text=text,
         reply_markup=accept_request
     )
 
@@ -90,8 +98,15 @@ async def handle_poll_answer(poll: types.Poll):
 async def handle_awaiting_total(msg: types.Message):
     global right_answers
 
-    await msg.reply(f'🏁Количество верных ответов: {right_answers} из {len(questions)} вопросов', reply=False)
+    await QuizDialogStates.end.set()
+
     db.save_user_result(UserResult(right_answers=right_answers, user_id=msg.from_user.id))
+
+    await msg.reply(
+        text=f'🏁 Вы дали {right_answers} верных ответов из {len(questions)} вопросов',
+        reply=False,
+        reply_markup=types.ReplyKeyboardRemove()
+    )
 
 
 @dp.message_handler(state=QuizDialogStates.end)
